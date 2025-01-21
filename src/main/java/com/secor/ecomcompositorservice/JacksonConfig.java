@@ -1,4 +1,4 @@
-package com.secor.ecomcustomerservice;
+package com.secor.ecomcompositorservice;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;

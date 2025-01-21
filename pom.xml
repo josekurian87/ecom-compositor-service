@@ -9,10 +9,10 @@
         <relativePath/> <!-- lookup parent from repository -->
     </parent>
     <groupId>com.secor</groupId>
-    <artifactId>ecom-customer-service</artifactId>
+    <artifactId>ecom-compositor-service</artifactId>
     <version>0.0.1-SNAPSHOT</version>
-    <name>ecom-customer-service</name>
-    <description>ecom-customer-service</description>
+    <name>ecom-compositor-service</name>
+    <description>ecom-compositor-service</description>
     <url/>
     <licenses>
         <license/>

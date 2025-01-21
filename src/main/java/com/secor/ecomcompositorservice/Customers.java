@@ -1,4 +1,4 @@
-package com.secor.ecomcustomerservice;
+package com.secor.ecomcompositorservice;
 
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
