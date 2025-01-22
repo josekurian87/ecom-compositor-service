@@ -19,7 +19,7 @@ import java.time.LocalDateTime;
 @RequestMapping("/api/v1")
 public class CompositorController {
 
-    private static final Logger log = LoggerFactory.getLogger(CompositorController.class);
+    private static final Logger LOG = LoggerFactory.getLogger(CompositorController.class);
 
     @Autowired
     private RedisTemplate<String, Object> redisTemplate;
@@ -44,47 +44,58 @@ public class CompositorController {
     WebClient paymentWebClient;
 
     public Flux<ProductView> getProducts() {
+        LOG.info("getProducts");
         return catalogWebClient.get().retrieve().bodyToFlux(ProductView.class);
     }
 
     public Mono<ProductView> getProductDetail(Long productId) {
+        LOG.info("getProductDetail");
         return catalogWebClient.get().uri("/" + productId).retrieve().bodyToMono(ProductView.class);
     }
 
     public Flux<InventoryView> getInventory(Long productId) {
+        LOG.info("getInventory");
         return inventoryWebClient.get().uri("/" + productId).retrieve().bodyToFlux(InventoryView.class);
     }
 
     public Mono<OrderView> postOrder(OrderView order) {
+        LOG.info("postOrder");
         return orderWebClient.post().body(Mono.just(order), OrderView.class).retrieve().bodyToMono(OrderView.class);
     }
 
     public Mono<PaymentView> postPayment(PaymentView payment) {
+        LOG.info("postPayment");
         return paymentWebClient.post().body(Mono.just(payment), PaymentView.class).retrieve().bodyToMono(PaymentView.class);
     }
 
     public Mono<PaymentView> putPayment(Long paymentId, PaymentView payment) {
+        LOG.info("putPayment");
         return paymentWebClient.put().uri("/" + paymentId).body(Mono.just(payment), PaymentView.class).retrieve().bodyToMono(PaymentView.class);
     }
 
     public Mono<InventoryView> putInventory(Long inventoryId, InventoryView inventory) {
+        LOG.info("putInventory");
         return inventoryWebClient.put().uri("/" + inventoryId).body(Mono.just(inventory), InventoryView.class).retrieve().bodyToMono(InventoryView.class);
     }
 
     public Mono<OrderView> getOrder(Long orderId) {
+        LOG.info("getOrder");
         return orderWebClient.get().uri("/" + orderId).retrieve().bodyToMono(OrderView.class);
     }
 
     public Mono<OrderView> putOrder(Long orderId, OrderView order) {
+        LOG.info("putOrder");
         return orderWebClient.put().uri("/" + orderId).body(Mono.just(order), OrderView.class).retrieve().bodyToMono(OrderView.class);
     }
 
     public Mono<PaymentView> getPayment(Long orderId) {
+        LOG.info("getPayment");
         return paymentWebClient.get().uri("/order/" + orderId).retrieve().bodyToMono(PaymentView.class);
     }
 
     @GetMapping(value = "productCatalog")
     public Flux<ProductCatalogView> getProductsAndInventories() {
+        LOG.info("getProductsAndInventories");
         return getProducts().flatMap(product -> getInventory(product.getProductId()).map(inventory -> {
             ProductCatalogView catalogView = new ProductCatalogView();
             catalogView.setProduct(product);
@@ -95,6 +106,7 @@ public class CompositorController {
 
     @PostMapping("/createOrder")
     public Mono<ResponseEntity<String>> createOrderAndPayment(@RequestParam Long productId, @RequestParam Integer quantity, @RequestParam Long customerId) {
+        LOG.info("createOrderAndPayment");
         return createOrder(productId, quantity, customerId)
                 .flatMap(order -> createPayment(order.getOrderId(), order.getTotalAmount())
                         .map(payment -> ResponseEntity.ok("Order created successfully ORDER_ID: " + order.getOrderId())))
@@ -103,12 +115,14 @@ public class CompositorController {
 
     @PutMapping("/processPayment")
     public Mono<ResponseEntity<String>> processPayment(@RequestParam Long orderId) {
+        LOG.info("processPayment");
         return processOrder(orderId)
                 .map(msg -> ResponseEntity.ok("Order confirmed successfully ORDER_ID: " + orderId))
                 .onErrorResume(error -> Mono.just(ResponseEntity.badRequest().body(error.getMessage())));
     }
 
     public Mono<OrderView> createOrder(Long productId, Integer quantity, Long customerId) {
+        LOG.info("createOrder");
         return checkInventory(productId, quantity)
                 .flatMap(isAvailable -> {
                     if (isAvailable) {
@@ -131,12 +145,14 @@ public class CompositorController {
                                     });
                                 });
                     } else {
+                        LOG.error("Insufficient inventory for product ID: {}", productId);
                         return Mono.error(new RuntimeException("Insufficient inventory for product ID: " + productId));
                     }
                 });
     }
 
     public Mono<PaymentView> createPayment(Long orderId, BigDecimal amount) {
+        LOG.info("createPayment");
         PaymentView payment = new PaymentView();
         payment.setOrderId(orderId);
         payment.setAmount(amount);
@@ -146,12 +162,14 @@ public class CompositorController {
             try {
                 producer.publishMessage(payment.getOrderId() + "", "PAYMENT CREATED");
             } catch (JsonProcessingException e) {
+                LOG.error("Error while creating payment for order ID: {}", orderId);
                 throw new RuntimeException(e);
             }
         });
     }
 
     private Mono<Boolean> checkInventory(Long productId, Integer requestedQuantity) {
+        LOG.info("checkInventory");
         return inventoryWebClient
                 .get()
                 .uri("/" + productId)
@@ -161,6 +179,7 @@ public class CompositorController {
     }
 
     public Mono<String> processOrder(Long orderId) {
+        LOG.info("processOrder");
         return getOrder(orderId)
                 .filter(order -> "PENDING_PAYMENT".equals(order.getStatus()))
                 .flatMap(order -> checkInventory(order.getProductId(), order.getQuantity())
@@ -197,6 +216,7 @@ public class CompositorController {
                                                 }))
                                         .thenReturn("PAYMENT_COMPLETED"); // Return OrderView after processing
                             } else {
+                                LOG.error("Insufficient inventory for product ID: {}", order.getProductId());
                                 return Mono.error(new RuntimeException("Insufficient inventory for product ID: " + order.getProductId()));
                             }
                         })
